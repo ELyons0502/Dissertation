@@ -1,0 +1,71 @@
+import pandas as pd
+import numpy as np
+
+Table 1: Stablecoin characteristics 
+# Need to add in relevant details for market cap
+
+Ticker = np.array(['USDT','USDC','BNB','TUSD','Pax','DAI','EOSDT','OUSD','DGX','PAXG','Frax'])
+Name = np.array(['USD Tether', 'USD Coin', 'Binance Coin','True USD', 'Paxos Standard', 'MakerDAO', 'EOSDT', 'Origin Dollar', 'Digix', 'PAX Gold', 'Frax'])
+Date = np.array(['2014', '2018','2017','2018','2020','2017','2019', '2020','2018','2019','2020'])
+Peg = np.array(['1 USD', '1 USD', '1 USD', '1 USD', '1 USD', '1 USD', '1 USD', '1 USD', '1 gram of gold', '1 gram of gold', '1 USD'])
+Cap = np.array(['Fiat', 'Fiat', 'Fiat', 'Fiat', 'Fiat', 'Crypto', 'Crypto', 'Crypto', 'Commodity', 'Commodity', 'Algorithmic'])
+
+Table1 = pd.DataFrame({'Ticker': Ticker,
+                      'Name': Name,
+                       'Year of issuance': Date,
+                      'Pegged to': Peg,
+                      'Reserves': Cap})
+                      
+Table1.set_index('Ticker', inplace=True)
+Table1
+
+Graph 1: Market cap by stablecoin
+# To add from excel daily data set once compiled
+
+Time series market volatility by stablecoin
+# To add from daily, weekly and monthly scripts
+
+Table 2: Summary statistics
+statistics_daily = pd.read_csv('statistics_daily.csv')
+statistics_weekly = pd.read_csv('statistics_weekly.csv')
+statistics_monthly = pd.read_csv('statistics_monthly.csv')
+
+new_index = {0:'Count', 1:'Mean', 2:'Standard Deviation', 3:'Min',4: 'Max', 5:'Kurtosis', 6:'Skewness', 7:'Jarque-Berra (p-val)'}
+statistics_daily = statistics_daily.rename(index=new_index)
+statistics_weekly = statistics_weekly.rename(index=new_index)
+statistics_monthly = statistics_monthly.rename(index=new_index)
+
+Table2 = pd.concat([statistics_daily, statistics_weekly, statistics_monthly]).round(2)
+
+Note to self: Download into excel to formulate
+
+Table 3: Intra-volatility of stablecoins (aka are non-fiat stablecoins significantly mroe volatile?)
+intra_daily = pd.read_csv('daily_test.csv')
+intra_weekly = pd.read_csv('weekly_test.csv') # will need to create this
+intra_monthly = pd.read_csv('monthly_test.csv') # will need to create this
+
+Table3a = pd.concat([intra_daily, intra_weekly, intra_monthly]).round(2)
+sig1 = pd.read_csv('intra-d.csv')
+sig2 = pd.read_csv('intra-w.csv')
+sig3 =  pd.read_csv('intra-m.csv')
+
+Table3b = pd.concat([sig1, sig2,sig3])
+
+Table 4: Absolute volatility
+absolutevol = pd.read_csv('absolute_vol.csv')
+absolutevolW = pd.read_csv('absolute_vol_weekly.csv')
+absolutevolM = pd.read_csv('absolute_vol_monthly.csv')
+Table4 = pd.concat([absolutevol, absolutevolW, absolutevolM]).round(2)
+
+Table 5: Relative volatility of stablecoins vs fiat
+relativevol = pd.read_csv('relative_vol_daily.csv')
+relativevolW = pd.read_csv('relative_vol_weekly.csv')
+relativevolM = pd.read_csv('relative_vol_monthly.csv')
+Table5a = pd.concat([relativevol, relativevolW, relativevolM]).round(2)
+
+# Add in significance and process in excel
+sig1 = pd.read_csv('relative_vol_daily_sig.csv')
+sig2 = pd.read_csv('relative_vol_weekly_sig.csv')
+sig3 =  pd.read_csv('relative_vol_monthly_sig.csv')
+Table5b = pd.concat([sig1, sig2,sig3])
+
