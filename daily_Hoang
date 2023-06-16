@@ -1,0 +1,614 @@
+Download packages
+
+## Import packages 
+import numpy as np #python library for scientific computing
+import pandas as pd #python library for data manipulation and analysis
+import matplotlib.pyplot as plt #python library for charting
+from pandas_datareader import data as pdr #extract data from internet sources into pandas data frame
+import datetime as dt
+from datetime import datetime
+import seaborn as sns
+import yfinance as yf
+yf.pdr_override()
+import matplotlib.pyplot as plt
+import plotly.express as px
+import plotly.figure_factory as ff
+import plotly.graph_objects as go
+from matplotlib import rcParams
+import matplotlib.dates as mdates
+
+Import data
+There are four types of stablecoins: 
+Fiat-collateralised,
+crypto-collateralised,
+commodity-collateralised, and
+algorithmic.
+
+Let's get the relevant data for each type.
+
+Market cap
+Note when and where taken from 
+
+df = pd.read_excel("Marketcap.xlsx") # Note, will need to upload this before running
+pd.options.display.float_format = '{:.2f}'.format # round to 2dp
+df.set_index('Date', inplace=True)
+df = df/1000000000 # Convert to $Bn
+df = df.clip(lower=0) # Keep values >=0
+df = df[::-1] # To reverse dates from most recent to least
+df
+
+# Note, need to replace BNB with BUSD.
+
+Graph 1: Market cap by stablecoin
+# Create a stacked area chart
+df.plot.area(stacked=True, colormap='Spectral')
+
+# Set the title and labels
+plt.title('Market capitalisation of each stablecoin', fontsize=15)
+plt.xlabel('Date', fontsize=12)
+plt.ylabel('$Bn', fontsize=12)
+
+# Set grid
+plt.grid(True, color='k', linestyle='-', alpha=0.1)
+plt.margins(x=0) # make graph fit to margins
+
+# Set the legend
+plt.legend(loc='lower left', bbox_to_anchor=(0, 0.5)).get_frame().set_edgecolor('black') # to keep legend on left hand side and tidy graph
+plt.legend(fontsize=12)
+
+# Set the figure size
+plt.rcParams['figure.figsize'] = 15, 10
+
+# Lighten borders
+plt.gca().spines["top"].set_alpha(0)
+plt.gca().spines["bottom"].set_alpha(.3)
+plt.gca().spines["right"].set_alpha(0)
+plt.gca().spines["left"].set_alpha(.3)
+
+# Display the chart
+plt.show()
+
+Live intraday price analysis
+The data above focusses on market cap data, rather than live intraday trading prices necessary to estimate asset volatility. To make use of live data, I will access live market data via Yahoo Finance.
+Fiat:
+USDT = pdr.get_data_yahoo('USDT-USD', start='2015-01-01') # USD Tether
+USDC = pdr.get_data_yahoo('USDC-USD', start='2015-01-01') # USD Circle
+BUSD = pdr.get_data_yahoo('BUSD-USD', start='2015-01-01') # Binance USD
+TUSD = pdr.get_data_yahoo('TUSD-USD', start='2015-01-01') # True USD
+Pax = pdr.get_data_yahoo('USDP-USD', start='2015-01-01') # Pax
+
+USDT['Collateral_Type'] = 'Fiat'
+USDC['Collateral_Type'] = 'Fiat'
+BUSD['Collateral_Type'] = 'Fiat'
+TUSD['Collateral_Type'] = 'Fiat'
+Pax['Collateral_Type'] = 'Fiat'
+
+Crypto-collateralised
+DAI = pdr.get_data_yahoo('DAI-USD', start='2017-01-01') # MakerDAO
+EOSDT = pdr.get_data_yahoo('EOSDT-USD', start='2017-01-01') # EOSDT
+OUSD = pdr.get_data_yahoo('OUSD-USD', start='2017-01-01') # Origin Dollar
+
+DAI['Collateral_Type'] = 'Crypto'
+EOSDT['Collateral_Type'] = 'Crypto'
+OUSD['Collateral_Type'] = 'Crypto'
+
+Commodity collateralised
+DGX = pdr.get_data_yahoo('DGX-USD', start='2017-01-01') # Digix Gold Token
+PAXG = pdr.get_data_yahoo('PAXG-USD', start='2017-01-01') # PAX Gold
+
+DGX['Collateral_Type'] = 'Commodity'
+PAXG['Collateral_Type'] = 'Commodity'
+
+Algorithmic
+USDD = pdr.get_data_yahoo('USDD-USD', start='2017-01-01') # USDD
+Tribe = pdr.get_data_yahoo('TRIBE-USD', start='2017-01-01') # Tribe USD
+Frax = pdr.get_data_yahoo('FRAX-USD', start='2017-01-01') # Frax
+
+USDD['Collateral_Type'] = 'Algorithmic'
+Tribe['Collateral_Type'] = 'Algorithmic'
+Frax['Collateral_Type'] = 'Algorithmic'
+
+Benchmarks 
+USD = pdr.get_data_yahoo('DX-Y.NYB', start='2015-01-01') # USDX
+EUR = pdr.get_data_yahoo('EURUSD=X', start='2015-01-01') 
+GBP = pdr.get_data_yahoo('GBPUSD=X', start='2015-01-01') 
+Gold = pdr.get_data_yahoo('GC=F', start='2015-01-01')
+
+Volatility analysis
+First, I will replicate the methodology used by Hoang and Baur (2020) to calculate stablecoin volatility.
+
+The equation I will use is as follows:
+
+𝜎𝑖,𝑡 =(𝑙𝑛(𝐶𝐿𝑂𝑆𝐸𝑖,𝑡)-𝑙𝑛(𝐶𝐿𝑂𝑆𝐸𝑖,𝑡-1))*100
+
+Where 𝐶𝐿𝑂𝑆𝐸𝑖,𝑡 denotes the closing price for cryptocurrency i on day t, respectively, 𝜎𝑖,𝑡 denotes cryptocurrency i’s corresponding realized annualized volatility
+USDT_SD = (np.log(USDT['Close']) -np.log(USDT['Close'].shift(1)))*100
+
+USDC_SD = (np.log(USDC['Close']) - np.log(USDC['Close'].shift(1)))*100
+
+BUSD_SD = (np.log(BUSD['Close']) - np.log(BUSD['Close'].shift(1)))*100
+
+TUSD_SD = (np.log(TUSD['Close']) - np.log(TUSD['Close'].shift(1)))*100
+
+Pax_SD = (np.log(Pax['Close']) - np.log(Pax['Close'].shift(1)))*100 
+ 
+# Create a DataFrame of realized volatilities with the time index for each asset
+USDT_df = pd.DataFrame({'USDT': USDT_SD}, index=USDT.index)
+USDC_df = pd.DataFrame({'USDC': USDC_SD}, index=USDT.index)
+BUSD_df = pd.DataFrame({'BUSD': BUSD_SD}, index=USDT.index)
+TUSD_df = pd.DataFrame({'TUSD': TUSD_SD}, index=USDT.index)
+Pax_df = pd.DataFrame({'Pax': Pax_SD}, index=USDT.index)
+
+DAI_SD = (np.log(DAI['Close']) - np.log(DAI['Close'].shift(1)))*100
+
+EOSDT_SD = (np.log(EOSDT['Close']) - np.log(EOSDT['Close'].shift(1)))*100 
+
+OUSD_SD = (np.log(OUSD['Close']) - np.log(OUSD['Close'].shift(1)))*100 
+    
+DAI_df = pd.DataFrame({'DAI': DAI_SD}, index=USDT.index)
+EOSDT_df = pd.DataFrame({'EOSDT': EOSDT_SD}, index=USDT.index)
+OUSD_df = pd.DataFrame({'OUSD': OUSD_SD}, index=USDT.index)
+
+DGX_SD = (np.log(DGX['Close']) - np.log(DGX['Close'].shift(1)))*100
+
+PAXG_SD = (np.log(PAXG['Close']) - np.log(PAXG['Close'].shift(1)))*100
+
+
+DGX_df = pd.DataFrame({'DGX': DGX_SD}, index=USDT.index)
+PAXG_df = pd.DataFrame({'PAXG': PAXG_SD}, index=USDT.index)
+
+USDD_SD = (np.log(USDD['Close']) - np.log(USDD['Close'].shift(1)))*100 
+    
+Frax_SD = (np.log(Frax['Close']) - np.log(Frax['Close'].shift(1)))*100
+
+Tribe_SD = (np.log(Tribe['Close']) - np.log(Tribe['Close'].shift(1)))*100 
+    
+USDD_df = pd.DataFrame({'USDD': USDD_SD}, index=USDT.index)
+Frax_df = pd.DataFrame({'Frax': Frax_SD}, index=USDT.index)
+Tribe_df = pd.DataFrame({'Tribe': Tribe_SD}, index=USDT.index)
+
+USD_SD = (np.log(USD['Close']) - np.log(USD['Close'].shift(1)))*100 
+    
+EUR_SD = (np.log(EUR['Close']) - np.log(EUR['Close'].shift(1)))*100
+
+GBP_SD = (np.log(GBP['Close']) - np.log(GBP['Close'].shift(1)))*100 
+
+Gold_SD = (np.log(Gold['Close']) - np.log(Gold['Close'].shift(1)))*100 
+
+USD_df = pd.DataFrame({'USD': USD_SD}, index=USD.index)
+EUR_df = pd.DataFrame({'Euro': EUR_SD}, index=USD.index)
+GBP_df = pd.DataFrame({'GBP': GBP_SD}, index=USD.index)
+Gold_df = pd.DataFrame({'Gold':Gold_SD}, index=USD.index)
+
+Create dataframes
+# Construct dataframes for each type of stablecoin and one overarching dataframe
+
+df1 = pd.concat([USDT_df, USDC_df, BUSD_df, TUSD_df,Pax_df], axis = 1) # Fiat
+df2 = pd.concat([DAI_df, EOSDT_df, OUSD_df], axis = 1) # Crtpto
+df3 = pd.concat([DGX_df, PAXG_df], axis = 1) # Commodity
+df4 = pd.concat([USDD_df, Frax_df, Tribe_df], axis = 1) # Algorithmic
+df5 = pd.concat([USD_df, EUR_df, GBP_df, Gold_df], axis=1) # Currencies
+
+df6 = pd.concat([df1,df2,df3,df4], axis = 1) # All stablecoins
+df7 = pd.concat([df1,df2,df3, Frax_df], axis = 1) # Excludes USDD and Frax algo-coins due to fact that reduces sample size significantly
+df8 = pd.concat([df7,df5], axis=1).dropna() # Create new dataframe that removes all NA's to ensure that we are comparing over same period
+df8
+
+Table 2: Summary statistics
+from scipy.stats import kurtosis, skew, jarque_bera
+
+# Assuming you have a DataFrame named "d6"
+
+# Calculate descriptive statistics using describe()
+statistics = df8.describe()
+
+# Calculate kurtosis
+kurt = kurtosis(df8)
+
+# Calculate skewness
+skewness = skew(df8)
+
+# Calculate Jarque-Bera test statistic and p-value
+jb_statistic, jb_p_value = jarque_bera(df8)
+
+# Add kurtosis, skewness, and Jarque-Bera results to the statistics DataFrame
+statistics.loc['Kurtosis'] = kurt
+statistics.loc['Skewness'] = skewness
+statistics.loc['Jarque-Berra (p-val)'] = jb_p_value
+
+# Remove rows for 25%, 50%, and 75%
+statistics_daily = statistics.drop(['25%', '50%', '75%'])
+
+
+# Print the statistical table
+statistics_daily.round(2)
+statistics_daily.to_csv('statistics_daily.csv', index=False)
+
+Graph 2: Time series evolution of realised volatilities
+df1.plot(kind='line')
+plt.xlabel('Date')  # Set the label for the x-axis
+plt.ylabel('Realised volatilies')  # Set the label for the y-axis
+plt.title('Fiat-collateralised stablecoins')  # Set the title for the plot
+# Set grid
+plt.grid(True, color='k', linestyle='-', alpha=0.1)
+plt.margins(x=0)
+
+# Set the desired x-axis date formatting
+date_format = mdates.DateFormatter('%b-%Y') #  line sets the x-axis tick labels to the desired date format using the DateFormatter object date_format
+
+# Set the x-axis locator to evenly space the ticks
+locator = mdates.YearLocator() # line sets the x-axis tick placement using the YearLocator object locator, which evenly spaces the ticks based on years
+
+plt.gca().xaxis.set_major_formatter(date_format)
+plt.gca().xaxis.set_major_locator(locator)
+
+plt.show()
+plt.savefig('volatility_fc.png')  # Change the filename based on the notebook
+
+# Close the figure
+plt.close()
+
+df2.plot(kind='line')
+plt.xlabel('Date')  # Set the label for the x-axis
+plt.ylabel('Realised volatilies')  # Set the label for the y-axis
+plt.title('Crypto-collateralised stablecoins')  # Set the title for the plot
+# Set grid
+plt.grid(True, color='k', linestyle='-', alpha=0.1)
+plt.margins(x=0)
+
+# Set the desired x-axis date formatting
+date_format = mdates.DateFormatter('%b-%Y') #  line sets the x-axis tick labels to the desired date format using the DateFormatter object date_format
+
+# Set the x-axis locator to evenly space the ticks
+locator = mdates.YearLocator() # line sets the x-axis tick placement using the YearLocator object locator, which evenly spaces the ticks based on years
+
+plt.gca().xaxis.set_major_formatter(date_format)
+plt.gca().xaxis.set_major_locator(locator)
+
+plt.show()
+plt.savefig('volatility_cry.png')  # Change the filename based on the notebook
+
+# Close the figure
+plt.close()
+
+df3.plot(kind='line')
+plt.xlabel('Date')  # Set the label for the x-axis
+plt.ylabel('Realised volatilies')  # Set the label for the y-axis
+plt.title('Commodity-collateralised stablecoins')  # Set the title for the plot
+# Set grid
+plt.grid(True, color='k', linestyle='-', alpha=0.1)
+plt.margins(x=0)
+
+# Set the desired x-axis date formatting
+date_format = mdates.DateFormatter('%b-%Y') #  line sets the x-axis tick labels to the desired date format using the DateFormatter object date_format
+
+# Set the x-axis locator to evenly space the ticks
+locator = mdates.YearLocator() # line sets the x-axis tick placement using the YearLocator object locator, which evenly spaces the ticks based on years
+
+plt.gca().xaxis.set_major_formatter(date_format)
+plt.gca().xaxis.set_major_locator(locator)
+
+plt.show()
+plt.savefig('volatility_cc.png')  # Change the filename based on the notebook
+
+# Close the figure
+plt.close()
+
+df4.plot(kind='line')
+plt.xlabel('Date')  # Set the label for the x-axis
+plt.ylabel('Realised volatilies')  # Set the label for the y-axis
+plt.title('Algorithmic stablecoins')  # Set the title for the plot
+# Set grid
+plt.grid(True, color='k', linestyle='-', alpha=0.1)
+plt.margins(x=0)
+
+# Set the desired x-axis date formatting
+date_format = mdates.DateFormatter('%b-%Y') #  line sets the x-axis tick labels to the desired date format using the DateFormatter object date_format
+
+# Set the x-axis locator to evenly space the ticks
+locator = mdates.YearLocator() # line sets the x-axis tick placement using the YearLocator object locator, which evenly spaces the ticks based on years
+
+plt.gca().xaxis.set_major_formatter(date_format)
+plt.gca().xaxis.set_major_locator(locator)
+
+plt.show()
+plt.savefig('volatility_algo.png')  # Change the filename based on the notebook
+
+# Close the figure
+plt.close()
+
+df5.plot(kind='line')
+plt.xlabel('Date')  # Set the label for the x-axis
+plt.ylabel('Realised volatilies')  # Set the label for the y-axis
+plt.title('Currency benchmarks')  # Set the title for the plot
+# Set grid
+plt.grid(True, color='k', linestyle='-', alpha=0.1)
+plt.margins(x=0)
+
+# Set the desired x-axis date formatting
+date_format = mdates.DateFormatter('%b-%Y') #  line sets the x-axis tick labels to the desired date format using the DateFormatter object date_format
+
+# Set the x-axis locator to evenly space the ticks
+locator = mdates.YearLocator() # line sets the x-axis tick placement using the YearLocator object locator, which evenly spaces the ticks based on years
+
+plt.gca().xaxis.set_major_formatter(date_format)
+plt.gca().xaxis.set_major_locator(locator)
+
+plt.show()
+plt.savefig('volatility_algo.png')  # Change the filename based on the notebook
+
+# Close the figure
+plt.close()
+
+df6.plot(kind='line')
+plt.xlabel('Date')  # Set the label for the x-axis
+plt.ylabel('Realised volatilies')  # Set the label for the y-axis
+plt.title('All stablecoins')  # Set the title for the plot
+# Set grid
+plt.grid(True, color='k', linestyle='-', alpha=0.1)
+plt.margins(x=0)
+
+# Set the desired x-axis date formatting
+date_format = mdates.DateFormatter('%d-%b-%Y') #  line sets the x-axis tick labels to the desired date format using the DateFormatter object date_format
+
+# Set the x-axis locator to evenly space the ticks
+locator = mdates.YearLocator() # line sets the x-axis tick placement using the YearLocator object locator, which evenly spaces the ticks based on years
+
+plt.gca().xaxis.set_major_formatter(date_format)
+plt.gca().xaxis.set_major_locator(locator)
+
+plt.show()
+plt.savefig('volatility_d.png')  # Change the filename based on the notebook
+
+# Close the figure
+plt.close()
+
+Table 4: Correlation matrix of volatilities
+df6.corr()
+corr_matrix = df6.corr()
+f, ax = plt.subplots(figsize=(12, 10))
+
+# Tidied correlation matrix
+
+df2022 = corr_matrix.where(np.tril(np.ones(corr_matrix.shape)).astype(np.bool))
+
+hmap=sns.heatmap(df2022,cmap="Reds", annot=True).set_title('Stablecoin daily volatility correlation matrix')
+
+Testing for absolute volatility
+I will replicate the methodology used by Hoang and Baur(2020) to calculate the absolute volatility of stablecons.
+
+The equation I will use is as follows:
+
+T=((N−1)⋅(σsc2))/σ0.12∼χ2N−1
+
+Where σsc is the logarithmic daily volatility of stablecoin prices (as per Grobys et al.,) σ0.1 is the threshold for breaching the condition of absolute stability, and N is the number of observations.
+
+# First, set out known parameters
+
+N = len(df8)
+sigma_0 = 0.1
+
+import scipy.stats as stats
+
+# Create a dictionary to store the results
+results_dict = {'Test Statistic': [], 'Number of observations': [], 'p-value': []}
+
+# Iterate over each column and calculate the test statistic T and p-value
+for column in df8.columns:
+    # Calculate the sample variance for the current column
+    sigma_s = np.var(df8[column])
+
+    # Calculate the test statistic T
+    T = round(((N - 1) * sigma_s**2) / (sigma_0**2),2)
+
+    T_distribution = stats.chi2(N - 1)
+
+    # Calculate the p-value using the chi-square distribution
+    p_value = round(1 - T_distribution.cdf(T),2)
+
+    # Append the results to the dictionary
+    results_dict['Test Statistic'].append(f"{T:.2f}***" if p_value < 0.01 else (f"{T:.2f}**" if p_value < 0.05 else (f"{T:.2f}*" if p_value < 0.1 else f"{T:.2f}")))
+    results_dict['Number of observations'].append(N)
+    results_dict['p-value'].append(p_value)
+
+# Create a DataFrame from the results dictionary with assets as columns
+results_table = pd.DataFrame(results_dict, index=df8.columns).transpose()
+
+# Print the results table
+results_table
+
+results_table.to_csv('absolute_vol.csv', index_label=False)
+
+Testing for relative stability
+df9 = df8[['USDT','USDC','BUSD','TUSD','Pax','DAI','EOSDT','OUSD','DGX','PAXG','Frax']]
+df10 = df8[['USD','Euro','GBP','Gold']]
+
+import scipy.stats as stats
+
+# Create a dictionary to store the results
+volatility_stab = {}
+
+# Iterate over each column and calculate the test statistic T and p-value
+for column in df9.columns:
+    # Calculate the sample variance for the current column
+    vol1 = np.var(df9[column])
+    volatility_stab[column] = vol1**2
+    
+# Create a dictionary to store the results
+volatility_bench = {}
+
+# Iterate over each column and calculate the test statistic T and p-value
+for column in df10.columns:
+    # Calculate the sample variance for the current column
+    vol2 = np.var(df10[column])
+    volatility_bench[column] = vol2**2
+    
+    USD_volatility = volatility_bench['USD']
+df_volatility_stab_divided = {key: value / USD_volatility for key, value in volatility_stab.items()}
+
+# Create a DataFrame from the divided results
+resultUSD = pd.DataFrame.from_dict({'USD': df_volatility_stab_divided}, orient='columns')
+
+Euro_volatility = volatility_bench['Euro']
+df_volatility_stab_divided = {key: value / Euro_volatility for key, value in volatility_stab.items()}
+
+# Create a DataFrame from the divided results
+resultEuro = pd.DataFrame.from_dict({'Euro': df_volatility_stab_divided}, orient='columns')
+
+GBP_volatility = volatility_bench['GBP']
+df_volatility_stab_divided = {key: value / GBP_volatility for key, value in volatility_stab.items()}
+
+# Create a DataFrame from the divided results
+resultGBP = pd.DataFrame.from_dict({'GBP': df_volatility_stab_divided}, orient='columns')
+
+Gold_volatility = volatility_bench['Gold']
+df_volatility_stab_divided = {key: value / Gold_volatility for key, value in volatility_stab.items()}
+
+# Create a DataFrame from the divided results
+resultGold = pd.DataFrame.from_dict({'Gold': df_volatility_stab_divided}, orient='columns')
+
+df11 = pd.concat([resultUSD, resultEuro, resultGBP, resultGold], axis=1)
+df11 = df11.transpose()
+
+df11.to_csv('relative_vol_daily.csv', index_label=False)
+
+# Significance testing
+from scipy.stats import f
+
+# Set the degrees of freedom for the F-test
+df_num = len(df8)-1
+df_denom = len(df8)-1
+
+# Create a new dataframe to store the p-values
+pvalue_df = pd.DataFrame(columns=df11.columns, index=df11.index)
+
+# Iterate over each row and column in df11
+for row in df11.index:
+    for column in df11.columns:
+        # Retrieve the test statistic from df11
+        test_statistic = df11.loc[row,column]
+
+        # Calculate the p-value using the right-sided F-test
+        p_value = 1 - f.cdf(test_statistic, df_num, df_denom)
+        
+         # Add asterisks to indicate significance
+        if p_value < 0.01:
+            significance = f"{p_value:.2f}***"
+        elif p_value < 0.05:
+            significance = f"{p_value:.2f}**"
+        elif p_value < 0.1:
+            significance = f"{p_value:.2f}*"
+        else:
+            significance = f"{p_value:.2f}"
+
+        # Store the p-value and significance in the pvalue_df dataframe
+        pvalue_df.loc[row, column] = significance
+
+# Print the p-value dataframe
+df12 = pvalue_df
+
+newcolumns = ['USDT','USDC','BUSD','TUSD','Pax','DAI','EOSDT','OUSD','DGX','PAXG','Frax']
+
+df12 = df12[newcolumns]
+df12.to_csv('relative_vol_daily_sig.csv', index_label=False)
+
+Compare intra-coin volatility
+Most policymakers argue that fiat-collateralised stablecoins are the only form of tokenised money that could suitable as an alternative to fiat currency.
+
+Therefore, let's test whether non-fiat stablecoins are indeed more volatile. The null hypothesis is:
+
+H0: The volatility of non-fiat stablecoins is no different to the volatility of fiat stablecoins.
+
+df13 = df7[['DAI','EOSDT','OUSD','DGX','PAXG','Frax']]
+df14 = df7[['USDT','USDC','BUSD','TUSD','Pax']]
+
+import scipy.stats as stats
+
+# Create a dictionary to store the results
+volatility_stab = {}
+
+# Iterate over each column and calculate the test statistic T and p-value
+for column in df13.columns:
+    # Calculate the sample variance for the current column
+    vol1 = np.var(df13[column])
+    volatility_stab[column] = vol1**2
+    
+# Create a dictionary to store the results
+volatility_fiat = {}
+
+# Iterate over each column and calculate the test statistic T and p-value
+for column in df14.columns:
+    # Calculate the sample variance for the current column
+    vol2 = np.var(df14[column])
+    volatility_fiat[column] = vol2**2
+    
+    USDT = volatility_fiat['USDT']
+df_volatility_stab_divided = {key: value / USDT for key, value in volatility_stab.items()}
+
+# Create a DataFrame from the divided results
+USDT = pd.DataFrame.from_dict({'USDT': df_volatility_stab_divided}, orient='columns')
+
+USDC = volatility_fiat['USDC']
+df_volatility_stab_divided = {key: value / USDC for key, value in volatility_stab.items()}
+
+# Create a DataFrame from the divided results
+USDC = pd.DataFrame.from_dict({'USDC': df_volatility_stab_divided}, orient='columns')
+
+BUSD = volatility_fiat['BUSD']
+df_volatility_stab_divided = {key: value / BUSD for key, value in volatility_stab.items()}
+
+# Create a DataFrame from the divided results
+BUSD = pd.DataFrame.from_dict({'BUSD': df_volatility_stab_divided}, orient='columns')
+
+TUSD = volatility_fiat['TUSD']
+df_volatility_stab_divided = {key: value / TUSD for key, value in volatility_stab.items()}
+
+# Create a DataFrame from the divided results
+TUSD = pd.DataFrame.from_dict({'TUSD': df_volatility_stab_divided}, orient='columns')
+
+Pax = volatility_fiat['Pax']
+df_volatility_stab_divided = {key: value / Pax for key, value in volatility_stab.items()}
+
+# Create a DataFrame from the divided results
+Pax = pd.DataFrame.from_dict({'Pax': df_volatility_stab_divided}, orient='columns')
+
+df15 = pd.concat([USDT, USDC, BUSD, TUSD, Pax], axis=1)
+df15 = df15.transpose()
+
+# Set the degrees of freedom for the F-test
+df_num = len(df8)-1
+df_denom = len(df8)-1
+
+# Create a new dataframe to store the p-values
+pvalue_df = pd.DataFrame(columns=df15.columns, index=df15.index)
+
+# Iterate over each row and column in df11
+for row in df15.index:
+    for column in df15.columns:
+        # Retrieve the test statistic from df11
+        test_statistic = df15.loc[row,column]
+
+        # Calculate the p-value using the right-sided F-test
+        p_value = 1 - f.cdf(test_statistic, df_num, df_denom)
+        
+         # Add asterisks to indicate significance
+        if p_value < 0.01:
+            significance = f"{p_value:.2f}***"
+        elif p_value < 0.05:
+            significance = f"{p_value:.2f}**"
+        elif p_value < 0.1:
+            significance = f"{p_value:.2f}*"
+        else:
+            significance = f"{p_value:.2f}"
+
+        # Store the p-value and significance in the pvalue_df dataframe
+        pvalue_df.loc[row, column] = significance
+
+# Print the p-value dataframe
+df16 = pvalue_df
+
+df15.to_csv('daily_test.csv', index_label=False)
+df16.to_csv('intra-d.csv', index_label=False)
+
+These results show that we can reject the null hypothesis that non-fiat stablecoins are equally as volatile as fiat stablecoins.
+
