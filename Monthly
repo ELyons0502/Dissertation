@@ -1,0 +1,215 @@
+Copy daily analysis
+
+Add this:
+
+Volatility analysis
+Group daily data to make monthly
+USDT = USDT.groupby(pd.Grouper(freq='M')).mean().assign()
+USDC = USDC.groupby(pd.Grouper(freq='M')).mean().assign()
+BUSD = BUSD.groupby(pd.Grouper(freq='M')).mean().assign()
+TUSD = TUSD.groupby(pd.Grouper(freq='M')).mean().assign()
+Pax = Pax.groupby(pd.Grouper(freq='M')).mean().assign()
+DAI = DAI.groupby(pd.Grouper(freq='M')).mean().assign()
+EOSDT = EOSDT.groupby(pd.Grouper(freq='M')).mean().assign()
+OUSD = OUSD.groupby(pd.Grouper(freq='M')).mean().assign()
+DGX = DGX.groupby(pd.Grouper(freq='M')).mean().assign()
+PAXG = PAXG.groupby(pd.Grouper(freq='M')).mean().assign()
+USDD = USDD.groupby(pd.Grouper(freq='M')).mean().assign()
+Tribe = Tribe.groupby(pd.Grouper(freq='M')).mean().assign()
+Frax = Frax.groupby(pd.Grouper(freq='M')).mean().assign()
+USD = USD.groupby(pd.Grouper(freq='M')).mean().assign()
+EUR = EUR.groupby(pd.Grouper(freq='M')).mean().assign()
+GBP = GBP.groupby(pd.Grouper(freq='M')).mean().assign()
+Gold = Gold.groupby(pd.Grouper(freq='M')).mean().assign()
+
+
+Chart 2: Monthly volatility analysis
+df6.plot(kind='line')
+plt.xlabel('Date')  # Set the label for the x-axis
+plt.ylabel('Realised volatilies')  # Set the label for the y-axis
+plt.title('All stablecoins')  # Set the title for the plot
+# Set grid
+plt.grid(True, color='k', linestyle='-', alpha=0.1)
+plt.margins(x=0)
+
+# Set the desired x-axis date formatting
+date_format = mdates.DateFormatter('%d-%b-%Y') #  line sets the x-axis tick labels to the desired date format using the DateFormatter object date_format
+
+# Set the x-axis locator to evenly space the ticks
+locator = mdates.YearLocator() # line sets the x-axis tick placement using the YearLocator object locator, which evenly spaces the ticks based on years
+
+plt.gca().xaxis.set_major_formatter(date_format)
+plt.gca().xaxis.set_major_locator(locator)
+
+plt.show()
+plt.savefig('volatility_d.png')  # Change the filename based on the notebook
+
+# Close the figure
+plt.close()
+
+Make dataframes of volatility
+# Construct dataframes for each type of stablecoin and one overarching dataframe
+
+df1 = pd.concat([USDT_df, USDC_df, BUSD_df, TUSD_df,Pax_df], axis = 1) # Fiat
+df2 = pd.concat([DAI_df, EOSDT_df, OUSD_df], axis = 1) # Crtpto
+df3 = pd.concat([DGX_df, PAXG_df], axis = 1) # Commodity
+df4 = pd.concat([USDD_df, Frax_df, Tribe_df], axis = 1) # Algorithmic
+df5 = pd.concat([USD_df, EUR_df, GBP_df, Gold_df], axis=1) # Currencies
+
+df6 = pd.concat([df1,df2,df3,df4], axis = 1) # All stablecoins
+df7 = pd.concat([df1,df2,df3, Frax_df], axis = 1) # Excludes USDD and Frax algo-coins due to fact that reduces sample size significantly
+
+from scipy.stats import kurtosis, skew, jarque_bera
+
+# Calculate descriptive statistics using describe()
+statistics = df8.describe()
+
+# Calculate kurtosis
+kurt = kurtosis(df8)
+
+# Calculate skewness
+skewness = skew(df8)
+
+# Calculate Jarque-Bera test statistic and p-value
+jb_statistic, jb_p_value = jarque_bera(df8)
+
+# Add kurtosis, skewness, and Jarque-Bera results to the statistics DataFrame
+statistics.loc['Kurtosis'] = kurt
+statistics.loc['Skewness'] = skewness
+statistics.loc['Jarque-Berra (p-val)'] = jb_p_value
+
+# Remove rows for 25%, 50%, and 75%
+statistics_monthly = statistics.drop(['25%', '50%', '75%'])
+
+
+# Print the statistical table
+statistics_monthly.round(2)
+statistics_monthly.to_csv('statistics_monthly.csv', index=False)
+
+Test for absolute volatility
+
+N = len(df8)
+sigma_0 = 0.1
+import scipy.stats as stats
+
+# Create a dictionary to store the results
+results_dict = {'Test Statistic': [], 'Number of observations': [], 'p-value': []}
+
+# Iterate over each column and calculate the test statistic T and p-value
+for column in df8.columns:
+    # Calculate the sample variance for the current column
+    sigma_s = np.var(df8[column])
+
+    # Calculate the test statistic T
+    T = round(((N - 1) * sigma_s**2) / (sigma_0**2),2)
+
+    T_distribution = stats.chi2(N - 1)
+
+    # Calculate the p-value using the chi-square distribution
+    p_value = round(1 - T_distribution.cdf(T),2)
+
+    # Append the results to the dictionary
+    results_dict['Test Statistic'].append(f"{T:.2f}***" if p_value < 0.01 else (f"{T:.2f}**" if p_value < 0.05 else (f"{T:.2f}*" if p_value < 0.1 else f"{T:.2f}")))
+    results_dict['Number of observations'].append(N)
+    results_dict['p-value'].append(p_value)
+
+# Create a DataFrame from the results dictionary with assets as columns
+results_table_monthly = pd.DataFrame(results_dict, index=df8.columns).transpose()
+
+# Print the results table
+results_table_monthly
+
+results_table_monthly.to_csv('absolute_vol_monthly.csv', index_label=False)
+
+Test for relative volatility
+import scipy.stats as stats
+
+# Create a dictionary to store the results
+volatility_stab = {}
+
+# Iterate over each column and calculate the test statistic T and p-value
+for column in df9.columns:
+    # Calculate the sample variance for the current column
+    vol1 = np.var(df9[column])
+    volatility_stab[column] = vol1**2
+    
+# Create a dictionary to store the results
+volatility_bench = {}
+
+# Iterate over each column and calculate the test statistic T and p-value
+for column in df10.columns:
+    # Calculate the sample variance for the current column
+    vol2 = np.var(df10[column])
+    volatility_bench[column] = vol2**2
+    
+    USD_volatility = volatility_bench['USD']
+df_volatility_stab_divided = {key: value / USD_volatility for key, value in volatility_stab.items()}
+
+# Create a DataFrame from the divided results
+resultUSD = pd.DataFrame.from_dict({'USD': df_volatility_stab_divided}, orient='columns')
+
+Euro_volatility = volatility_bench['Euro']
+df_volatility_stab_divided = {key: value / Euro_volatility for key, value in volatility_stab.items()}
+
+# Create a DataFrame from the divided results
+resultEuro = pd.DataFrame.from_dict({'Euro': df_volatility_stab_divided}, orient='columns')
+
+GBP_volatility = volatility_bench['GBP']
+df_volatility_stab_divided = {key: value / GBP_volatility for key, value in volatility_stab.items()}
+
+# Create a DataFrame from the divided results
+resultGBP = pd.DataFrame.from_dict({'GBP': df_volatility_stab_divided}, orient='columns')
+
+Gold_volatility = volatility_bench['Gold']
+df_volatility_stab_divided = {key: value / Gold_volatility for key, value in volatility_stab.items()}
+
+# Create a DataFrame from the divided results
+resultGold = pd.DataFrame.from_dict({'Gold': df_volatility_stab_divided}, orient='columns')
+
+df11 = pd.concat([resultUSD, resultEuro, resultGBP, resultGold], axis=1)
+df11 = df11.transpose().round(2)
+df11.to_csv('relative_vol_monthly.csv', index_label=False)
+
+import numpy as np
+from scipy.stats import f
+
+# Set the degrees of freedom for the F-test
+df_num = len(df8)-1
+df_denom = len(df8)-1
+
+# Create a new dataframe to store the p-values
+pvalue_df = pd.DataFrame(columns=df11.columns, index=df11.index)
+
+# Iterate over each row and column in df11
+for row in df11.index:
+    for column in df11.columns:
+        # Retrieve the test statistic from df11
+        test_statistic = df11.loc[row,column]
+
+        # Calculate the p-value using the right-sided F-test
+        p_value = 1 - f.cdf(test_statistic, df_num, df_denom)
+        
+         # Add asterisks to indicate significance
+        if p_value < 0.01:
+            significance = f"{p_value:.2f}***"
+        elif p_value < 0.05:
+            significance = f"{p_value:.2f}**"
+        elif p_value < 0.1:
+            significance = f"{p_value:.2f}*"
+        else:
+            significance = f"{p_value:.2f}"
+
+        # Store the p-value and significance in the pvalue_df dataframe
+        pvalue_df.loc[row, column] = significance
+
+# Print the p-value dataframe
+df12 = pvalue_df
+
+newcolumns = ['USDT','USDC','BUSD','TUSD','Pax','DAI','EOSDT','OUSD','DGX','PAXG','Frax']
+
+df12 = df12[newcolumns]
+df12
+df12.to_csv('relative_vol_monthly_sig.csv', index_label=False)
+
+    
+
