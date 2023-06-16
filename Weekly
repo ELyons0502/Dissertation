@@ -19,6 +19,8 @@ EUR = EUR.groupby(pd.Grouper(freq='W')).mean().assign()
 GBP = GBP.groupby(pd.Grouper(freq='W')).mean().assign()
 Gold = Gold.groupby(pd.Grouper(freq='W')).mean().assign()
 
+# Note, will need to make data frames
+
 Time series of weekly realised volatilities
 df6.plot(kind='line')
 plt.xlabel('Date')  # Set the label for the x-axis
